@@ -124,7 +124,7 @@ declare module 'discord.js' {
 		public toArray(): S[];
 		public toJSON(): number;
 		public valueOf(): number;
-		public [Symbol.iterator](): Iterator<S>;
+		public [Symbol.iterator](): IterableIterator<S>;
 		public static FLAGS: object;
 		public static resolve(bit?: BitFieldResolvable<any>): number;
 	}
@@ -1408,6 +1408,7 @@ declare module 'discord.js' {
 		public locale: string;
 		public readonly partial: false;
 		public readonly presence: Presence;
+		public system?: boolean;
 		public readonly tag: string;
 		public username: string;
 		public avatarURL(options?: AvatarOptions): string | null;
@@ -1625,6 +1626,7 @@ declare module 'discord.js' {
 	export class Webhook extends WebhookMixin() {
 		constructor(client: Client, data?: object);
 		public avatar: string;
+		public avatarURL(options?: AvatarOptions): string | null;
 		public channelID: Snowflake;
 		public guildID: Snowflake;
 		public name: string;
@@ -1653,6 +1655,7 @@ declare module 'discord.js' {
 
 		public on(event: WSEventType, listener: (data: any, shardID: number) => void): this;
 		public once(event: WSEventType, listener: (data: any, shardID: number) => void): this;
+
 		private debug(message: string, shard?: WebSocketShard): void;
 		private connect(): Promise<void>;
 		private createShards(): Promise<void>;
@@ -1660,9 +1663,9 @@ declare module 'discord.js' {
 		private broadcast(packet: object): void;
 		private destroy(): void;
 		private _handleSessionLimit(remaining?: number, resetAfter?: number): Promise<void>;
-		private handlePacket(packet?: object, shard?: WebSocketShard): Promise<boolean>;
-		private checkReady(): boolean;
-		private triggerReady(): void;
+		private handlePacket(packet?: object, shard?: WebSocketShard): boolean;
+		private checkShardsReady(): Promise<void>;
+		private triggerClientReady(): void;
 	}
 
 	export class WebSocketShard extends EventEmitter {
@@ -1674,14 +1677,15 @@ declare module 'discord.js' {
 		private lastHeartbeatAcked: boolean;
 		private ratelimit: { queue: object[]; total: number; remaining: number; time: 60e3; timer: NodeJS.Timeout | null; };
 		private connection: WebSocket | null;
-		private helloTimeout: NodeJS.Timeout | null;
+		private helloTimeout: NodeJS.Timeout | undefined;
 		private eventsAttached: boolean;
+		private expectedGuilds: Set<Snowflake> | undefined;
+		private readyTimeout: NodeJS.Timeout | undefined;
 
 		public manager: WebSocketManager;
 		public id: number;
 		public status: Status;
-		public pings: [number, number, number];
-		public readonly ping: number;
+		public ping: number;
 
 		private debug(message: string): void;
 		private connect(): Promise<void>;
@@ -1690,6 +1694,7 @@ declare module 'discord.js' {
 		private onError(error: ErrorEvent | object): void;
 		private onClose(event: CloseEvent): void;
 		private onPacket(packet: object): void;
+		private checkReady(): void;
 		private setHelloTimeout(time?: number): void;
 		private setHeartbeatTimer(time: number): void;
 		private sendHeartbeat(): void;
@@ -1706,12 +1711,14 @@ declare module 'discord.js' {
 		public on(event: 'resumed', listener: () => void): this;
 		public on(event: 'close', listener: (event: CloseEvent) => void): this;
 		public on(event: 'invalidSession', listener: () => void): this;
+		public on(event: 'allReady', listener: (unavailableGuilds?: Set<Snowflake>) => void): this;
 		public on(event: string, listener: Function): this;
 
 		public once(event: 'ready', listener: () => void): this;
 		public once(event: 'resumed', listener: () => void): this;
 		public once(event: 'close', listener: (event: CloseEvent) => void): this;
 		public once(event: 'invalidSession', listener: () => void): this;
+		public once(event: 'allReady', listener: (unavailableGuilds?: Set<Snowflake>) => void): this;
 		public once(event: string, listener: Function): this;
 	}
 
@@ -1926,7 +1933,9 @@ declare module 'discord.js' {
 
 	type MessageFlagsString = 'CROSSPOSTED'
 		| 'IS_CROSSPOST'
-		| 'SUPPRESS_EMBEDS';
+		| 'SUPPRESS_EMBEDS'
+		| 'SOURCE_MESSAGE_DELETED'
+		| 'URGENT';
 
 	interface APIErrror {
 		UNKNOWN_ACCOUNT: number;
@@ -2055,9 +2064,8 @@ declare module 'discord.js' {
 	}
 
 	interface ClientOptions {
-		shards?: number | number[];
-		shardCount?: number | 'auto';
-		totalShardCount?: number;
+		shards?: number | number[] | 'auto';
+		shardCount?: number;
 		messageCacheMaxSize?: number;
 		messageCacheLifetime?: number;
 		messageSweepInterval?: number;
@@ -2145,6 +2153,8 @@ declare module 'discord.js' {
 		TextChannel: typeof TextChannel;
 		VoiceChannel: typeof VoiceChannel;
 		CategoryChannel: typeof CategoryChannel;
+		NewsChannel: typeof NewsChannel;
+		StoreChannel: typeof StoreChannel;
 		GuildMember: typeof GuildMember;
 		Guild: typeof Guild;
 		Message: typeof Message;
