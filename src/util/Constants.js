@@ -294,6 +294,7 @@ exports.ShardEvents = {
  * * CHANNEL (only affects DMChannels)
  * * GUILD_MEMBER
  * * MESSAGE
+ * * REACTION
  * <warn>Partials require you to put checks in place when handling data, read the Partials topic listed in the
  * sidebar for more information.</warn>
  * @typedef {string} PartialType
@@ -303,6 +304,7 @@ exports.PartialTypes = keyMirror([
   'CHANNEL',
   'GUILD_MEMBER',
   'MESSAGE',
+  'REACTION',
 ]);
 
 /**
@@ -626,6 +628,19 @@ exports.MembershipStates = [
   null,
   'INVITED',
   'ACCEPTED',
+];
+
+/**
+ * The value set for a webhook's type:
+ * * Incoming
+ * * Channel Follower
+ * @typedef {string} WebhookTypes
+ */
+exports.WebhookTypes = [
+  // They start at 1
+  null,
+  'Incoming',
+  'Channel Follower',
 ];
 
 function keyMirror(arr) {
